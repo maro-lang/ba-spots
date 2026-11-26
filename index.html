@@ -2005,10 +2005,12 @@ function mostrarRecientes(){
   box.hidden = false;
 }
 function cambiarOrigen(){
+  gpsTurno++;
   S.ubic = null; S.res = []; S.lejano = null; S.sel = null; S.texto = ""; ultimoDij = null; S.esperandoUbic = false;
   render(); capa.pedir(); const q = $("#q"); if (q) q.focus();
 }
 function fijarUbic(lat, lng, texto){
+  gpsTurno++;                                 // any new location makes a pending GPS answer obsolete
   try { localStorage.setItem("ba-spots-origen-visto", "1"); } catch(e){}
   S.ubic = {lat, lng}; S.esperandoUbic = false; avisoMapa(""); S.marcaDir = null; S.marcaEv = null;
   const di = texto ? null : dirCerca(lat, lng, 60);
@@ -2889,6 +2891,7 @@ document.addEventListener("keydown", ev => {
 });
 
 document.addEventListener("focusin", ev => { if (ev.target.id === "q") mostrarRecientes(); });
+document.addEventListener("pointerdown", ev => { if (ev.target.closest && ev.target.closest(".sugs button")) ev.preventDefault(); });
 document.addEventListener("click", ev => { if (ev.target.id === "q") mostrarRecientes(); });
 document.addEventListener("click", ev => { if (ev.target.id === "ev-dia" && ev.target.showPicker){ try { ev.target.showPicker(); } catch(e){} } });
 document.addEventListener("toggle", ev => { if (ev.target.id === "filtros") S.filtrosAbiertos = ev.target.open; }, true);
@@ -3030,18 +3033,21 @@ function ubicarSinCambiar(lat, lng){
   S.ubic.calle = di != null ? textoDir(di) : calleCerca(lat, lng);
   calcularCerca();
 }
+let gpsTurno = 0;   // increases with every new location choice; a GPS answer from an older turn is ignored
 function hayGPS(){ return !!(navigator.geolocation && window.isSecureContext); }
 function usarGPS(){
   if (!hayGPS()) return;
   toast(tr("gpsBuscando"));
   const ic = $("#gps-in"), parar = () => { const b = $("#gps-in"); if (b) b.classList.remove("girando"); };
   if (ic) ic.classList.add("girando");
+  const turno = ++gpsTurno;
   navigator.geolocation.getCurrentPosition(pos => {
     parar();
+    if (turno !== gpsTurno) return;          // the user chose another location while waiting
     const {latitude: la, longitude: lo} = pos.coords;
     if (la < 48.01 || la > 48.26 || lo < 16.97 || lo > 17.25){ toast(tr("gpsFuera")); return; }
     S.texto = ""; fijarUbic(la, lo); map.setView([la, lo], Math.max(map.getZoom(), 16));
-  }, () => { parar(); toast(tr("gpsError")); }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 60000});
+  }, () => { parar(); if (turno === gpsTurno) toast(tr("gpsError")); }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 60000});
 }
 async function respaldo(){
   const data = JSON.stringify({fecha: new Date().toISOString(), info: INFO, propios: PROPIOS, eventos: EVENTOS}, null, 2);
