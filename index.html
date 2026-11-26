@@ -1837,7 +1837,8 @@ function dibujar(c){
   }
   // ruta al lugar elegido
   const selP = S.sel && porId.get(S.sel);
-  const rcSel = S.tab === "cerca" && selP && selP.sn && (S.res.some(r => r.p.id === selP.id) || (S.lejano && S.lejano.p.id === selP.id)) ? recorrido(selP.sn, true) : null;
+  const rutaEvVisible = S.rutaEv && S.rutaEv.c === S.marcaEv && S.rutaEv.desde === S.ubic;
+  const rcSel = S.tab === "cerca" && !rutaEvVisible && selP && selP.sn && (S.res.some(r => r.p.id === selP.id) || (S.lejano && S.lejano.p.id === selP.id)) ? recorrido(selP.sn, true) : null;
   if (rcSel){
     ctx.beginPath();
     ctx.moveTo(PX(S.ubic.lng)*s + ox, PY(S.ubic.lat)*s + oy);
@@ -3021,7 +3022,8 @@ function rutaAlEvento(c, askGps){
   // zoom out to show where you are, the whole path and the event
   let s0 = Math.min(S.ubic.lat, c.lat), n0 = Math.max(S.ubic.lat, c.lat), w0 = Math.min(S.ubic.lng, c.lng), e0 = Math.max(S.ubic.lng, c.lng);
   for (const [la, lo] of rc.pts){ s0 = Math.min(s0, la); n0 = Math.max(n0, la); w0 = Math.min(w0, lo); e0 = Math.max(e0, lo); }
-  map.fitBounds([[s0, w0], [n0, e0]], {maxZoom: 17, padding: [40, 40]});
+  // extra room at the bottom so the walking minutes and the message below do not cover the event
+  map.fitBounds([[s0, w0], [n0, e0]], {maxZoom: 17, paddingTopLeft: [40, 60], paddingBottomRight: [40, 120]});
   toast(tr("rutaEv", S.rutaEv.min, (rc.tot / 1000).toFixed(1)));
   capa.pedir();
 }
